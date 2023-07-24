@@ -89,5 +89,7 @@ func main() {
 	prometheus.WrapRegistererWith(prometheus.Labels{"hubitat_address": *hubitatAddress}, prometheus.DefaultRegisterer).MustRegister(collector)
 
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(*listenAddress, nil)
+	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
+		log.Fatalf("Error listening: %v", err)
+	}
 }
