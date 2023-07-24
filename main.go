@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,10 +20,19 @@ func newDesc(name, help string) *prometheus.Desc {
 	)
 }
 
+const (
+	listenAddressFlag      = "listen-address"
+	listenAddressEnv       = "LISTEN_ADDRESS"
+	hubitatAddressFlag     = "hubitat-address"
+	hubitatAddressEnv      = "HUBITAT_ADDRESS"
+	hubitatAccessTokenFlag = "hubitat-access-token"
+	hubitatAccessTokenEnv  = "HUBITAT_ACCESS_TOKEN"
+)
+
 var (
-	listenAddress      = flag.String("listen-address", ":1123", "Address to listen on.")
-	hubitatAddress     = flag.String("hubitat-address", "", "Address of the Hubitat hub.")
-	hubitatAccessToken = flag.String("hubitat-access-token", "", "Access token for the Hubitat hub.")
+	listenAddress      = flag.String(listenAddressFlag, "", "Address to listen on. Can also be specified via the "+listenAddressEnv+" environment variable.")
+	hubitatAddress     = flag.String(hubitatAddressFlag, "", "Address of the Hubitat hub. Can also be specified via the "+hubitatAddressEnv+" environment variable.")
+	hubitatAccessToken = flag.String(hubitatAccessTokenFlag, "", "Access token for the Hubitat hub. Can also be specified via the "+hubitatAccessTokenEnv+" environment variable.")
 
 	promDesc = map[string]*prometheus.Desc{
 		"temperature": newDesc("temperature_celsius", "Temperature in degrees Celsius."),
@@ -78,17 +88,27 @@ func (c *hubitatCollector) Collect(ch chan<- prometheus.Metric) {
 
 func main() {
 	flag.Parse()
+	if *listenAddress == "" {
+		if *listenAddress = os.Getenv(listenAddressEnv); *listenAddress == "" {
+			log.Fatal("Listen address must be specified via the -" + listenAddressFlag + " flag or the " + listenAddressEnv + " environment variable.")
+		}
+	}
 	if *hubitatAddress == "" {
-		log.Fatal("Hubitat address must be specified.")
+		if *hubitatAddress = os.Getenv(hubitatAddressEnv); *hubitatAddress == "" {
+			log.Fatal("Hubitat address must be specified via the -" + hubitatAddressFlag + " flag or the " + hubitatAddressEnv + " environment variable.")
+		}
 	}
 	if *hubitatAccessToken == "" {
-		log.Fatal("Hubitat access token must be specified.")
+		if *hubitatAccessToken = os.Getenv(hubitatAccessTokenEnv); *hubitatAccessToken == "" {
+			log.Fatal("Hubitat access token must be specified via the -" + hubitatAccessTokenFlag + " flag or the " + hubitatAccessTokenEnv + " environment variable.")
+		}
 	}
 
 	collector := &hubitatCollector{*hubitatAddress, *hubitatAccessToken}
 	prometheus.WrapRegistererWith(prometheus.Labels{"hubitat_address": *hubitatAddress}, prometheus.DefaultRegisterer).MustRegister(collector)
 
 	http.Handle("/metrics", promhttp.Handler())
+	log.Printf("Listening on %s", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error listening: %v", err)
 	}
