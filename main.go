@@ -16,7 +16,7 @@ func newDesc(name, help string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		"hubitat_"+name,
 		help,
-		[]string{"label", "model", "manufacturer", "room"}, nil,
+		[]string{"name", "label", "model", "manufacturer", "room"}, nil,
 	)
 }
 
@@ -43,6 +43,7 @@ var (
 )
 
 type device struct {
+	Name         string            `json:"name"`
 	Label        string            `json:"label"`
 	Type         string            `json:"type"`
 	Model        string            `json:"model"`
@@ -80,7 +81,7 @@ func (c *hubitatCollector) Collect(ch chan<- prometheus.Metric) {
 					log.Printf("Error parsing value %q for attribute %q: %v", value, attr, err)
 					continue
 				}
-				ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, floatValue, device.Label, device.Model, device.Manufacturer, device.Room)
+				ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, floatValue, device.Name, device.Label, device.Model, device.Manufacturer, device.Room)
 			}
 		}
 	}
